@@ -1,36 +1,62 @@
---review
+/*
+Covid 19 Data Exploration 
+
+Skills used: Joins, CTE's, Temp Tables, Windows Functions, Aggregate Functions, Creating Views, Converting Data Types
+
+*/
+
+--review the datasets 
 
 SELECT *
 FROM COVIDDEATHS
-ORDER BY 3,4 -----------------------------------------------------------------------------------------------
---review
+ORDER BY 3,4 
+
+
+--review the datasets 
 
 SELECT *
 FROM COVIDVACCINATIONS
-ORDER BY 3,4 -----------------------------------------------------------------------------------------------
+ORDER BY 3,4 
 
-SELECT LOCATION, date, TOTAL_CASES,
+
+
+--Select Data that we are going to be starting with
+SELECT 
+	LOCATION, 
+	date, 
+	TOTAL_CASES,
 	NEW_CASES,
 	TOTAL_DEATHS,
 	POPULATION
 FROM COVIDDEATHS
-ORDER BY 3,4 -----------------------------------------------------------------------------------------------
---total cases vs total deaths
+where 
+	continent is not null 
+ORDER BY 3,4 
+
+
+-- Total Cases vs Total Deaths
+-- Shows likelihood of dying if you contract covid in your country
 
 SELECT LOCATION, date, TOTAL_CASES,
 	TOTAL_DEATHS,
 	(TOTAL_DEATHS::float / TOTAL_CASES::float) * 100 AS DEATH_PERCENTAGE
 FROM COVIDDEATHS
 WHERE LOCATION like '%States%'
-ORDER BY 3,4 -----------------------------------------------------------------------------------------------
---total cases vs population
+and continent is not null
+ORDER BY 3,4 
+
+
+-- Total Cases vs Population
+-- Shows what percentage of population infected with Covid
 
 SELECT LOCATION, date, POPULATION,
 	TOTAL_CASES,
 	(TOTAL_CASES::float / POPULATION::float) * 100 AS PERCENT_POPULATION_INFECTED
 FROM COVIDDEATHS --where location like '%States%'
-ORDER BY 1,2 -----------------------------------------------------------------------------------------------
---countries with highest infection rates
+ORDER BY 1,2 
+
+
+--countries with highest infection rates compared to population
 
 SELECT LOCATION,
 	POPULATION,
@@ -40,8 +66,10 @@ FROM COVIDDEATHS --where location like '%States%'
 GROUP BY LOCATION,
 	POPULATION
 HAVING MAX(TOTAL_CASES) IS NOT NULL
-ORDER BY PERCENT_POPULATION_INFECTED DESC -----------------------------------------------------------------------------------------------
---countries with highest death rates
+ORDER BY PERCENT_POPULATION_INFECTED DESC 
+
+
+--countries with highest death count per population 
 
 SELECT LOCATION,
 	MAX(CAST(TOTAL_DEATHS AS int)) AS TOTAL_DEATH_COUNT
@@ -52,9 +80,14 @@ GROUP BY LOCATION
 HAVING MAX(TOTAL_DEATHS) IS NOT NULL
 ORDER BY TOTAL_DEATH_COUNT DESC;
 
------------------------------------------------------------------------------------------------
---continental data
 
+
+
+
+
+-- BREAKING THINGS DOWN BY CONTINENT
+
+-- Showing contintents with the highest death count per population
 SELECT CONTINENT,
 	MAX(CAST(TOTAL_DEATHS AS int)) AS TOTAL_DEATH_COUNT
 FROM COVIDDEATHS -- WHERE Location LIKE '%States%'
@@ -64,7 +97,8 @@ GROUP BY CONTINENT
 HAVING MAX(TOTAL_DEATHS) IS NOT NULL
 ORDER BY TOTAL_DEATH_COUNT DESC;
 
------------------------------------------------------------------------------------------------
+
+
 --GLOBAL NUMBERS
 
 SELECT --date,
@@ -75,15 +109,20 @@ SELECT --date,
 					ELSE SUM(CAST(NEW_DEATHS AS INT)) / SUM(NEW_CASES) * 100
 	END AS DEATH_PERCENTAGE
 FROM COVIDDEATHS
-WHERE CONTINENT IS NOT NULL --GROUP BY
- --date
-ORDER BY 1,2 -----------------------------------------------------------------------------------------------
---Joining Covid Deaths and Covid Vaccination datasets
+WHERE CONTINENT IS NOT NULL 
+--GROUP BY
+--date
+ORDER BY 1,2 
+
+
+
+-- Total Population vs Vaccinations
+-- Shows Percentage of Population that has recieved at least one Covid Vaccine
 
 SELECT *
 FROM COVIDDEATHS DEA
 JOIN COVIDVACCINATIONS VAC ON DEA.LOCATION = VAC.LOCATION
-AND DEA.DATE = VAC.DATE -----------------------------------------------------------------------------------------------
+AND DEA.DATE = VAC.DATE 
 --seeing the vaccination total (rolling)
 
 SELECT DEA.CONTINENT,
@@ -99,8 +138,9 @@ JOIN COVIDVACCINATIONS VAC ON DEA.LOCATION = VAC.LOCATION
 AND DEA.DATE = VAC.DATE
 WHERE DEA.CONTINENT IS NOT NULL
 ORDER BY 2,3 
------------------------------------------------------------------------------------------------
---USE CTE
+
+
+-- Using CTE to perform Calculation on Partition By in previous query
 WITH POPVSVAC (CONTINENT,
 
 							LOCATION, date, POPULATION,
@@ -124,7 +164,11 @@ SELECT *,
 	(PEOPLE_VACCINATED_ROLLING:: numeric / POPULATION::numeric) * 100 AS PERCENTAGE_VACCINATED_ROLLING
 FROM POPVSVAC;
 
--- USE TEMP TABLE
+
+
+
+-- Using Temp Table to perform Calculation on Partition By in previous query
+
 
 drop table if exists percentpopulationvaccinated
 create table percentpopulationvaccinated (
@@ -151,8 +195,10 @@ AND DEA.DATE = VAC.DATE; --WHERE DEA.CONTINENT IS NOT NULL --order by 2,3
 SELECT *, (PEOPLE_VACCINATED_ROLLING:: numeric / POPULATION::numeric) * 100 AS PERCENTAGE_VACCINATED_ROLLING
 FROM PERCENTPOPULATIONVACCINATED;
 
------------------------------------------------------------------------------------------------
---create view to store date for later visualization
+
+
+
+-- Creating View to store data for later visualizations
 
 create view PERCENTPOPULATIONVACCINATED_view as
 SELECT 
@@ -168,3 +214,6 @@ FROM COVIDDEATHS DEA
 JOIN COVIDVACCINATIONS VAC ON DEA.LOCATION = VAC.LOCATION
 AND DEA.DATE = VAC.DATE
 WHERE DEA.CONTINENT IS NOT NULL;
+
+-- Confirming view is correct 
+select * from percentpopulationvaccinated_view
